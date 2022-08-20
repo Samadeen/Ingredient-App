@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 import IngredientForm from './IngredientForm';
 import IngredientList from './IngredientList';
@@ -11,20 +11,26 @@ const Ingredients = () => {
     fetch(
       'https://ingredients-a74d5-default-rtdb.firebaseio.com/ingredients.json'
     )
-      .then((res) => {
-        res.json();
-      })
-      .then((resData) => {
+      .then((response) => response.json())
+      .then((responseData) => {
         const loadedIngredients = [];
-        for (const key in resData) {
+        for (const key in responseData) {
           loadedIngredients.push({
             id: key,
-            title: resData[key].title,
-            amount: resData[key].amount,
+            title: responseData[key].title,
+            amount: responseData[key].amount,
           });
         }
         setUserIngredients(loadedIngredients);
       });
+  }, []);
+
+  useEffect(() => {
+    console.log('RENDERING INGREDIENTS', userIngredients);
+  }, [userIngredients]);
+
+  const filteredIngredientsHandler = useCallback((filteredIngredients) => {
+    setUserIngredients(filteredIngredients);
   }, []);
 
   const addIngredientHandler = (ingredient) => {
@@ -36,21 +42,29 @@ const Ingredients = () => {
         headers: { 'Content-Type': 'application/json' },
       }
     )
-      .then((res) => {
-        return res.json();
+      .then((response) => {
+        return response.json();
       })
-      .then((resData) => {
+      .then((responseData) => {
         setUserIngredients((prevIngredients) => [
           ...prevIngredients,
-          { id: resData.name, ...ingredient },
+          { id: responseData.name, ...ingredient },
         ]);
       });
   };
 
   const removeIngredientHandler = (ingredientId) => {
-    setUserIngredients((prevIngredients) =>
-      prevIngredients.filter((ingredient) => ingredient.id !== ingredientId)
-    );
+    fetch(
+      `https://ingredients-a74d5-default-rtdb.firebaseio.com/ingredients/${ingredientId}.json`,
+      {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      }
+    ).then((res) => {
+      setUserIngredients((prevIngredients) =>
+        prevIngredients.filter((ingredient) => ingredient.id !== ingredientId)
+      );
+    });
   };
 
   return (
@@ -58,7 +72,7 @@ const Ingredients = () => {
       <IngredientForm onAddIngredient={addIngredientHandler} />
 
       <section>
-        <Search />
+        <Search onLoadIngredients={filteredIngredientsHandler} />
         <IngredientList
           ingredients={userIngredients}
           onRemoveItem={removeIngredientHandler}
